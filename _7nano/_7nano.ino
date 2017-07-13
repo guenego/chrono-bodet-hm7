@@ -36,6 +36,7 @@ const bool BCD[12][7] = {
   {false,false,false,false,false,false,true }, // 11
 };
 
+// les bobines à désactiver
 bool BCDlast[5][7];
 
 const bool BCDafficheur[5][3] = {
@@ -47,11 +48,18 @@ const bool BCDafficheur[5][3] = {
   {true ,false,true }, // heures_unite
 };
 
+/* 
+ * remise à zéro
+ */
 void raz() {
   for (int i=11; i>=0; i--) {
     ran(i);
   }  
 }
+
+/* 
+ * remise à n
+ */
 void ran(int x) {
   for (int i=0; i<5; i++) {
     affiche(x, i);
@@ -60,6 +68,10 @@ void ran(int x) {
 }
 
 int segmentLast = 0;
+
+/* 
+ * affiche le nombre x sur la palette n
+ */
 void affiche(int x, int n) {
   if (debug) {
     Serial.print(" af(");
@@ -69,7 +81,7 @@ void affiche(int x, int n) {
     Serial.print(")");
   }
 
-  segmentLast = 0;
+  segmentLast = 0; // la derniere bobine activée (donc à desactiver)
   if (x > 11) {
     x = 11;
   }
@@ -78,21 +90,21 @@ void affiche(int x, int n) {
     digitalWrite(afficheur[i], BCDafficheur[n][i]); // selection de l'afficheur
   }
   for (int i=6; i>=0; i--) { // commence par la barre du milieu
-    if (BCD[x][i] && !BCDlast[n][i]) {
-      digitalWrite(segment1[i], HIGH );
+    if (BCD[x][i] && !BCDlast[n][i]) { // si l'état demandé est différent du précédent et qu'il faut allumer
+      digitalWrite(segment1[i], HIGH ); // activation de la bobine
       delay(delai);
-      if (segmentLast != 0) digitalWrite(segmentLast, LOW );
-      segmentLast = segment1[i];
-      BCDlast[n][i] = true;
-    } else if (!BCD[x][i] && BCDlast[n][i]) {
+      if (segmentLast != 0) digitalWrite(segmentLast, LOW ); // si une bobine a été activée avant alors la descativer
+      segmentLast = segment1[i]; // la derniere bobine devient celle qui vient d'être activée
+      BCDlast[n][i] = true; // on retient que c'est allumé
+    } else if (!BCD[x][i] && BCDlast[n][i]) {  // si l'état demandé est différent du précédent et qu'il faut étaindre
       digitalWrite(segment0[i], HIGH );
       delay(delai);
       if (segmentLast != 0) digitalWrite(segmentLast, LOW );
       segmentLast = segment0[i];
-      BCDlast[n][i] = false;
+      BCDlast[n][i] = false; // on retient que c'est éteind
     }
   }
-  if (segmentLast != 0) {
+  if (segmentLast != 0) { // pour arreter d'alimenter le dernier
     if (debug) Serial.print("#");
     delay(delai);
     digitalWrite(segmentLast, LOW );
@@ -100,6 +112,10 @@ void affiche(int x, int n) {
   }
 }
 
+
+/* 
+ * retourne la memoire libre
+ */
 int freeRam() {
   extern int __heap_start, *__brkval;
   int v;
@@ -125,6 +141,7 @@ void setup() {
   ran(0);
   delay(20);
 }
+
 void loop() {
   buttonStart = !( (bool) digitalRead(buttonPin_Start_Stop) );
   if (buttonStart && !buttonStartLast) {
@@ -165,10 +182,10 @@ void loop() {
 
   if (start && !pause) {
     t = (millis()-tstart) / 1000;
-    s = t % 60;
-    m = (t-s) /60;
+    s = t % 60;            // secondes
+    m = (t-s) /60;         // minutes
     m = m % 60;
-    h = (t-m*60-s) /60/60;
+    h = (t-m*60-s) /60/60; // heures
     if (s != sLast) {
       if (debug) {
         sprintf(heure, "%02d:%02d:%02d", h, m, s);
